@@ -97,6 +97,16 @@ services:
       - microservices-network
     restart: unless-stopped
 
+  # Frontend (React)
+  frontend:
+    image: ${IMAGE_PREFIX}/frontend:latest
+    container_name: frontend
+    ports:
+      - "5173:80" # Map internal Nginx port 80 to host port 5173 (or 80 if direct)
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
   # API Gateway (Go)
   api-gateway:
     image: ${IMAGE_PREFIX}/api-gateway:latest

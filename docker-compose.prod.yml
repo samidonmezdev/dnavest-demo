@@ -118,6 +118,7 @@ services:
       REDIS_ADDR: redis:6379
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
       PORT: 8000
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:5173,https://dnavestfront.cytechnoware.com.tr,https://dnavest.com}"
     ports:
       - "${API_GATEWAY_PORT:-8000}:8000"
     depends_on:

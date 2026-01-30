@@ -3,8 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
 export default function Login() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('demo@dnavet.com');
+    const [password, setPassword] = useState('123456');
     const [error, setError] = useState('');
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -22,7 +22,7 @@ export default function Login() {
 
     return (
         <div className="auth-container">
-            <h2>Login to Finscope</h2>
+            <h2>Login to dnavet</h2>
             {error && <div className="error-message">{error}</div>}
             <form onSubmit={handleSubmit}>
                 <div className="form-group">

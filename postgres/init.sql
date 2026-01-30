@@ -53,7 +53,8 @@ ON CONFLICT (name) DO NOTHING;
 -- Insert sample data
 INSERT INTO users (email, password_hash, name) VALUES
     ('admin@example.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIiIrxZ.nO', 'Admin User'),
-    ('user@example.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIiIrxZ.nO', 'Test User')
+    ('user@example.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIiIrxZ.nO', 'Test User'),
+    ('demo@dnavet.com', '$2b$12$NWX5LJQTqkEf96BpCViZ..VmnrmaS9DSYnpKdOGGeVls2DzvGpV6G', 'Demo User')
 ON CONFLICT (email) DO NOTHING;
 
 -- Assign roles to users

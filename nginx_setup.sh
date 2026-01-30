@@ -20,9 +20,17 @@ fi
 
 # 2. Collect Configuration Details
 echo ""
-echo "Please enter the domain configuration details:"
-read -p "🌐 Enter Domain Name (e.g., example.com or api.example.com): " DOMAIN_NAME
-read -p "🔌 Enter Backend Port (Default 8000 for API Gateway): " PORT
+echo "----------------------------------------------------------------"
+echo "This script creates a Reverse Proxy for any Docker Service."
+echo "You can run this twice: once for Frontend, once for API."
+echo "----------------------------------------------------------------"
+echo ""
+read -p "🌐 Enter Domain Name (e.g., dnavest.com or api.dnavest.com): " DOMAIN_NAME
+echo ""
+echo "Which port is the service running on?"
+echo " - Frontend (React) is usually: 5173"
+echo " - API Gateway is usually:      8000"
+read -p "🔌 Enter Service Port (Default 8000): " PORT
 PORT=${PORT:-8000}
 
 # 3. Create Nginx Configuration

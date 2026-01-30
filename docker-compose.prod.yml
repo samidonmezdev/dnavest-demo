@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: microservices-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-microservices}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: microservices-redis
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - microservices-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Auth Service (Go)
+  auth-service:
+    image: ${IMAGE_PREFIX}/auth-service:latest
+    container_name: auth-service
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-microservices}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      PORT: 8082
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  # Go API Service
+  go-api:
+    image: ${IMAGE_PREFIX}/go-api:latest
+    container_name: go-api
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-microservices}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  # Python Data Processor
+  python-processor:
+    image: ${IMAGE_PREFIX}/python-processor:latest
+    container_name: python-processor
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-microservices}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+  # API Gateway (Go)
+  api-gateway:
+    image: ${IMAGE_PREFIX}/api-gateway:latest
+    container_name: api-gateway
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8082
+      GO_API_SERVICE_URL: http://go-api:8080
+      PYTHON_SERVICE_URL: http://python-processor:8081
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      PORT: 8000
+    ports:
+      - "${API_GATEWAY_PORT:-8000}:8000"
+    depends_on:
+      - auth-service
+      - go-api
+      - python-processor
+      - redis
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
+networks:
+  microservices-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

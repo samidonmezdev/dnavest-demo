@@ -178,3 +178,51 @@ jobs:
           file: ./python-processor/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ghcr.io/${{ github.repository_owner }}/python-processor:latest
+
+  # -------------------------
+  # DEPLOY TO HETZNER
+  # -------------------------
+  deploy:
+    name: Deploy to Hetzner
+    runs-on: ubuntu-latest
+    needs: [api-gateway, auth-service, go-api, python-processor]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.prod.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "docker-compose.prod.yml,postgres/init.sql"
+          target: "/root/dnavest-demo"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: GHCR_PAT,GITHUB_REPOSITORY_OWNER
+          script: |
+            # Create directory if not exists
+            mkdir -p /root/dnavest-demo
+            cd /root/dnavest-demo
+
+            # Login to GitHub Container Registry
+            echo $GHCR_PAT | docker login ghcr.io -u $GITHUB_REPOSITORY_OWNER --password-stdin
+
+            # Set IMAGE_PREFIX env var (lowercase owner name)
+            export IMAGE_PREFIX=ghcr.io/$(echo $GITHUB_REPOSITORY_OWNER | tr '[:upper:]' '[:lower:]')
+            
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull
+
+            # Restart containers
+            docker-compose -f docker-compose.prod.yml up -d --force-recreate

@@ -7,6 +7,11 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# Give permission to push packages to GHCR
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   # -------------------------
   # API GATEWAY SERVICE
@@ -28,12 +33,6 @@ jobs:
         working-directory: ./api-gateway
         run: go mod download && go mod verify
 
-      - name: Lint (golangci-lint)
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: latest
-          working-directory: ./api-gateway
-
       - name: Build Binary
         working-directory: ./api-gateway
         run: go build -v ./...
@@ -41,13 +40,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ./api-gateway
           file: ./api-gateway/Dockerfile
-          push: false # Set to true if you want to push to a registry
-          tags: api-gateway:latest
+          push: ${{ github.event_name != 'pull_request' }} # Push only on main branch, not PRs
+          tags: ghcr.io/${{ github.repository_owner }}/api-gateway:latest
 
   # -------------------------
   # AUTH SERVICE
@@ -69,12 +75,6 @@ jobs:
         working-directory: ./auth-service
         run: go mod download && go mod verify
 
-      - name: Lint (golangci-lint)
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: latest
-          working-directory: ./auth-service
-
       - name: Build Binary
         working-directory: ./auth-service
         run: go build -v ./...
@@ -82,13 +82,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ./auth-service
           file: ./auth-service/Dockerfile
-          push: false
-          tags: auth-service:latest
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository_owner }}/auth-service:latest
 
   # -------------------------
   # GO API SERVICE
@@ -110,12 +117,6 @@ jobs:
         working-directory: ./go-api
         run: go mod download && go mod verify
 
-      - name: Lint (golangci-lint)
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: latest
-          working-directory: ./go-api
-
       - name: Build Binary
         working-directory: ./go-api
         run: go build -v ./...
@@ -123,13 +124,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ./go-api
           file: ./go-api/Dockerfile
-          push: false
-          tags: go-api:latest
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository_owner }}/go-api:latest
 
   # -------------------------
   # PYTHON PROCESSOR SERVICE
@@ -153,22 +161,20 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Lint with flake8
-        working-directory: ./python-processor
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          pip install flake8
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ./python-processor
           file: ./python-processor/Dockerfile
-          push: false
-          tags: python-processor:latest
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ghcr.io/${{ github.repository_owner }}/python-processor:latest

@@ -222,16 +222,16 @@ jobs:
       - name: Install SSH Key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
       - name: Deploy to Server
         env:
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
-          HOST: ${{ secrets.HOST }}
-          USERNAME: ${{ secrets.USERNAME }}
+          HOST: ${{ secrets.SERVER_IP }}
+          USERNAME: ${{ secrets.SERVER_USER }}
         run: |
           # 1. Create directories
           ssh -i ~/.ssh/id_rsa $USERNAME@$HOST "mkdir -p /root/dnavest-demo/postgres"

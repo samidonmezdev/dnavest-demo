@@ -1,0 +1,174 @@
+name: Monorepo CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  # -------------------------
+  # API GATEWAY SERVICE
+  # -------------------------
+  api-gateway:
+    name: API Gateway (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'api-gateway/go.mod'
+          cache-dependency-path: 'api-gateway/go.sum'
+
+      - name: Verify dependencies
+        working-directory: ./api-gateway
+        run: go mod download && go mod verify
+
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          working-directory: ./api-gateway
+
+      - name: Build Binary
+        working-directory: ./api-gateway
+        run: go build -v ./...
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api-gateway
+          file: ./api-gateway/Dockerfile
+          push: false # Set to true if you want to push to a registry
+          tags: api-gateway:latest
+
+  # -------------------------
+  # AUTH SERVICE
+  # -------------------------
+  auth-service:
+    name: Auth Service (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'auth-service/go.mod'
+          cache-dependency-path: 'auth-service/go.sum'
+
+      - name: Verify dependencies
+        working-directory: ./auth-service
+        run: go mod download && go mod verify
+
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          working-directory: ./auth-service
+
+      - name: Build Binary
+        working-directory: ./auth-service
+        run: go build -v ./...
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./auth-service
+          file: ./auth-service/Dockerfile
+          push: false
+          tags: auth-service:latest
+
+  # -------------------------
+  # GO API SERVICE
+  # -------------------------
+  go-api:
+    name: Go API (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go-api/go.mod'
+          cache-dependency-path: 'go-api/go.sum'
+
+      - name: Verify dependencies
+        working-directory: ./go-api
+        run: go mod download && go mod verify
+
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: latest
+          working-directory: ./go-api
+
+      - name: Build Binary
+        working-directory: ./go-api
+        run: go build -v ./...
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./go-api
+          file: ./go-api/Dockerfile
+          push: false
+          tags: go-api:latest
+
+  # -------------------------
+  # PYTHON PROCESSOR SERVICE
+  # -------------------------
+  python-processor:
+    name: Python Processor
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9' # Adjust if needed (checked Dockerfile if possible, assumed 3.9)
+          cache: 'pip'
+
+      - name: Install dependencies
+        working-directory: ./python-processor
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Lint with flake8
+        working-directory: ./python-processor
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./python-processor
+          file: ./python-processor/Dockerfile
+          push: false
+          tags: python-processor:latest

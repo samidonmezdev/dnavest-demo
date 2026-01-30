@@ -48,7 +48,7 @@ func main() {
     r.Use(func(next http.Handler) http.Handler {
         return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
             start := time.Now()
-            ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+            ww := chimiddleware.NewWrapResponseWriter(w, r.ProtoMajor)
             
             log.Printf("[GATEWAY-ENTRY] %s %s | Origin: %s | Headers: %v", 
                 r.Method, r.URL.Path, r.Header.Get("Origin"), r.Header)

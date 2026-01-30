@@ -56,8 +56,13 @@ func main() {
 		allowedOrigins = "*"
 	}
 
+	originsList := strings.Split(allowedOrigins, ",")
+	for i := range originsList {
+		originsList[i] = strings.TrimSpace(originsList[i])
+	}
+
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   strings.Split(allowedOrigins, ","),
+		AllowedOrigins:   originsList,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		ExposedHeaders:   []string{"Link"},
@@ -158,6 +163,11 @@ func createProxy(targetURL string) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Explicitly handle OPTIONS to prevent 405 from backends that don't implementation it
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		proxy.ServeHTTP(w, r)
 	}
 }

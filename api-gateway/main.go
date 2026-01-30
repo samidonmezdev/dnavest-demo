@@ -50,36 +50,28 @@ func main() {
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
 
-	// CORS middleware
+	// CORS Setup
 	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
-		allowedOrigins = "*"
+		// Fallback for local development (avoid * with credentials)
+		allowedOrigins = "http://localhost:5173"
 	}
 
 	originsList := strings.Split(allowedOrigins, ",")
 	for i := range originsList {
 		originsList[i] = strings.TrimSpace(originsList[i])
 	}
+	
+	log.Printf("CORS Configured with Origins: %v", originsList)
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   originsList,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
-
-    // Force 200 OK for any OPTIONS request that falls through (after CORS)
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	})
 
 	// Health check endpoint
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -174,11 +166,6 @@ func createProxy(targetURL string) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Explicitly handle OPTIONS to prevent 405 from backends that don't implementation it
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
 		proxy.ServeHTTP(w, r)
 	}
 }

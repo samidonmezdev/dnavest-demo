@@ -44,8 +44,23 @@ func main() {
 	// Initialize router
 	r := chi.NewRouter()
 
+    // 1. logging middleware (custom)
+    r.Use(func(next http.Handler) http.Handler {
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+            start := time.Now()
+            ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+            
+            log.Printf("[GATEWAY-ENTRY] %s %s | Origin: %s | Headers: %v", 
+                r.Method, r.URL.Path, r.Header.Get("Origin"), r.Header)
+
+            next.ServeHTTP(ww, r)
+
+            log.Printf("[GATEWAY-EXIT] %s %s -> Status: %d | Duration: %s", 
+                r.Method, r.URL.Path, ww.Status(), time.Since(start))
+        })
+    })
+
 	// Global middleware
-	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RequestID)
 	r.Use(chimiddleware.RealIP)
@@ -62,7 +77,7 @@ func main() {
 		originsList[i] = strings.TrimSpace(originsList[i])
 	}
 	
-	log.Printf("CORS Configured with Origins: %v", originsList)
+	log.Printf("[GATEWAY-CONFIG] CORS Allowed Origins: %v", originsList)
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   originsList,
@@ -71,6 +86,7 @@ func main() {
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
+		Debug:            true, // Enable CORS debug logging
 	}))
 
 	// Health check endpoint
@@ -80,6 +96,7 @@ func main() {
 		w.Write([]byte(`{"status":"healthy","service":"api-gateway"}`))
 	})
 
+    // ... (rest of middleware: rate limiter, circuit breakers, jwt) ...
 	// Rate limiter middleware
 	rateLimiter := middleware.NewRateLimiter(redisClient, 100, time.Minute)
 
@@ -166,6 +183,7 @@ func createProxy(targetURL string) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+        log.Printf("[GATEWAY-PROXY] Forwarding %s to %s", r.URL.Path, targetURL)
 		proxy.ServeHTTP(w, r)
 	}
 }

@@ -21,13 +21,23 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             const response = await apiClient.post('/auth/login', { email, password });
-            const { token, user } = response.data;
+            // API returns { accessToken, refreshToken, expiresIn }
+            // We need to handle this structure
+            const { accessToken } = response.data;
+            const token = accessToken || response.data.token;
+
+            if (!token) throw new Error('No access token received');
+
+            const user = parseJwt(token);
+
+            if (!user) throw new Error('Invalid token');
 
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
             setUser(user);
             return { success: true };
         } catch (error) {
+            console.error('Login error:', error);
             return {
                 success: false,
                 error: error.response?.data?.error || 'Login failed'
@@ -62,3 +72,12 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+function parseJwt(token) {
+    try {
+        return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+        return null;
+    }
+}
+

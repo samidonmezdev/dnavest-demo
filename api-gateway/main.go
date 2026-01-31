@@ -103,7 +103,6 @@ func main() {
 	// Circuit breaker for each service
 	authCB := middleware.NewCircuitBreaker("auth-service")
 	goAPICB := middleware.NewCircuitBreaker("go-api")
-	pythonCB := middleware.NewCircuitBreaker("python-processor")
 
 	// JWT middleware
 	jwtMiddleware := middleware.NewJWTMiddleware(jwtSecret)
@@ -123,12 +122,7 @@ func main() {
 		r.HandleFunc("/*", createProxy(goAPIServiceURL))
 	})
 
-	// Python processor routes
-	r.Route("/api/v1/process", func(r chi.Router) {
-		r.Use(rateLimiter.RateLimit)
-		r.Use(pythonCB.Middleware)
-		r.HandleFunc("/*", createProxy(pythonServiceURL))
-	})
+
 
 	// Start server
 	port := getEnv("PORT", "8000")
@@ -180,6 +174,15 @@ func createProxy(targetURL string) http.HandlerFunc {
 		req.Host = target.Host
 		req.URL.Scheme = target.Scheme
 		req.URL.Host = target.Host
+	}
+
+	// Modify response to strip CORS headers from upstream
+	proxy.ModifyResponse = func(r *http.Response) error {
+		r.Header.Del("Access-Control-Allow-Origin")
+		r.Header.Del("Access-Control-Allow-Methods")
+		r.Header.Del("Access-Control-Allow-Headers")
+		r.Header.Del("Access-Control-Allow-Credentials")
+		return nil
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {

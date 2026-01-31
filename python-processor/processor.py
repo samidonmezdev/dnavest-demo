@@ -4,7 +4,7 @@ import time
 import logging
 from datetime import datetime
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.extras import execute_values
@@ -22,7 +22,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+
 
 # Configuration
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@postgres:5432/microservices')
